@@ -1,5 +1,6 @@
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import Navbar from './Navbar'
 import './App.css'
 import Notification from './Notification'
 
@@ -7,6 +8,69 @@ export default function App() {
   const [notice, setNotice] = useState('')
   const [registering, setRegistering] = useState(false)
   const [loggingIn, setLoggingIn] = useState(false)
+  const [user, setUser] = useState(null)
+  const [checkingSession, setCheckingSession] = useState(true)
+  const [loggingOut, setLoggingOut] = useState(false)
+
+  useEffect(() => {
+    let active = true
+
+    async function verifySession() {
+      try {
+        const response = await fetch('/api/session', {
+          credentials: 'same-origin',
+          cache: 'no-store',
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          if (active) setUser(data.user)
+        }
+      } catch (error) {
+        console.error('Session check failed:', error)
+      } finally {
+        if (active) setCheckingSession(false)
+      }
+    }
+
+    verifySession()
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+
+  async function handleLogout() {
+    if (!window.confirm('Are you sure you want to log out?')) {
+      return
+    }
+
+    setLoggingOut(true)
+    setNotice('')
+
+    try {
+      const response = await fetch('/api/logout', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Logout failed. Please try again.')
+      }
+
+      setUser(null)
+      setNotice('You have logged out successfully.')
+      window.location.hash = 'home'
+    } catch (error) {
+      setNotice(error.message || 'Unable to log out.')
+    } finally {
+      setLoggingOut(false)
+    }
+  }
 
   const features = [
     {
@@ -116,11 +180,20 @@ export default function App() {
         throw new Error(data.error || 'Login failed.')
       }
 
-      setNotice(
-        `Welcome back, ${data.user?.name || 'user'}! Login successful.`
-      )
+      const sessionResponse = await fetch('/api/session', {
+        credentials: 'same-origin',
+        cache: 'no-store',
+      })
 
+      if (!sessionResponse.ok) {
+        throw new Error('Login succeeded, but the session could not be verified.')
+      }
+
+      const sessionData = await sessionResponse.json()
+      setUser(sessionData.user)
+      setNotice(`Welcome back, ${sessionData.user.name}!`)
       form.reset()
+      window.location.hash = 'dashboard'
     } catch (error) {
       setNotice(
         error.message ||
@@ -133,36 +206,57 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <header className="topbar">
-        <a
-          className="brand"
-          href="#home"
-          aria-label="StayHealthy home"
-        >
-          <span className="brand-icon">✚</span>
-          <span>
-            Stay<span className="brand-accent">Healthy</span>
-          </span>
-        </a>
+      <Navbar
+        user={user}
+        onLogout={handleLogout}
+        loggingOut={loggingOut}
+      />
 
-        <nav className="nav-links">
-          <a className="active-link" href="#services">
-            Appointments
-          </a>
-          <a href="#login">Login</a>
-        </nav>
+      {checkingSession ? (
+        <main className="dashboard-loading" role="status">
+          Checking your session...
+        </main>
+      ) : user ? (
+        <main id="dashboard" className="dashboard">
+          <div className="dashboard-welcome">
+            <div className="eyebrow">YOUR HEALTH DASHBOARD</div>
+            <h1>Welcome back, {user.name}!</h1>
+            <p>
+              Manage your healthcare journey from your StayHealthy dashboard.
+            </p>
+          </div>
 
-        <button
-          className="header-button"
-          onClick={() =>
-            document.getElementById('signup')?.scrollIntoView({
-              behavior: 'smooth',
-            })
-          }
-        >
-          Sign Up <span>↗</span>
-        </button>
-      </header>
+          <div className="dashboard-grid">
+            <article className="dashboard-card">
+              <h2>Your Profile</h2>
+              <p><strong>Name:</strong> {user.name}</p>
+              <p><strong>Email:</strong> {user.email}</p>
+              <p><strong>Role:</strong> {user.role}</p>
+            </article>
+
+            <article className="dashboard-card" id="appointments">
+              <h2>Appointments</h2>
+              <p>Find doctors and manage your appointments.</p>
+            </article>
+
+            <article className="dashboard-card">
+              <h2>Account Security</h2>
+              <p>Your account is protected by an authenticated session.</p>
+              <button
+                type="button"
+                className="header-button"
+                onClick={handleLogout}
+                disabled={loggingOut}
+              >
+                {loggingOut ? 'Logging out...' : 'Logout'}
+              </button>
+            </article>
+          </div>
+        </main>
+      ) : null}
+
+      {!checkingSession && !user && (
+        <>
 
       <main id="home">
         <section className="hero">
@@ -508,6 +602,8 @@ export default function App() {
 
         <span>© {new Date().getFullYear()} StayHealthy</span>
       </footer>
+        </>
+      )}
     </div>
   )
 }

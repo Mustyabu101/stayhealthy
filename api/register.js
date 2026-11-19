@@ -4,7 +4,9 @@ import bcrypt from 'bcryptjs';
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({
+      error: 'Method not allowed'
+    });
   }
 
   const databaseUrl = process.env.NEON_POSTGRES_URL;
@@ -16,7 +18,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { name, email, phone = '', role = 'Patient', password } = req.body ?? {};
+    const {
+      name,
+      email,
+      phone = '',
+      password
+    } = req.body ?? {};
 
     if (
       typeof name !== 'string' ||
@@ -28,6 +35,15 @@ export default async function handler(req, res) {
     ) {
       return res.status(400).json({
         error: 'Provide a name, valid email, and password of at least 8 characters'
+      });
+    }
+
+    if (
+      typeof phone !== 'string' ||
+      phone.length > 30
+    ) {
+      return res.status(400).json({
+        error: 'Provide a valid phone number'
       });
     }
 
@@ -49,16 +65,22 @@ export default async function handler(req, res) {
     const passwordHash = await bcrypt.hash(password, 12);
 
     const rows = await sql`
-      INSERT INTO users (name, email, phone, role, password_hash)
+      INSERT INTO users (
+        name,
+        email,
+        phone,
+        role,
+        password_hash
+      )
       VALUES (
         ${name.trim()},
         ${normalizedEmail},
-        ${typeof phone === 'string' ? phone.trim() : ''},
-        ${typeof role === 'string' && role.trim() ? role.trim() : 'Patient'},
+        ${phone.trim()},
+        'Patient',
         ${passwordHash}
       )
       ON CONFLICT (email) DO NOTHING
-      RETURNING id, name, email, role, created_at
+      RETURNING id, name, email, phone, role, created_at
     `;
 
     if (rows.length === 0) {
@@ -71,9 +93,12 @@ export default async function handler(req, res) {
       message: 'User registered successfully',
       user: rows[0]
     });
-  } catch {
+
+  } catch (error) {
+    console.error('Registration error:', error);
+
     return res.status(500).json({
-      error: 'Registration failed. Check the server configuration and try again.'
+      error: 'Registration failed. Check the server configuration.'
     });
   }
 }

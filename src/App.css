@@ -444,3 +444,72 @@
   .login-section { padding: 45px 5%; }
   .login-card { padding: 27px 21px; }
 }
+
+/* Authenticated dashboard */
+.dashboard {
+  min-height: 75vh;
+  padding: 65px 8%;
+  background: #f4faf5;
+}
+
+.dashboard-welcome {
+  max-width: 800px;
+  margin-bottom: 35px;
+}
+
+.dashboard-welcome h1 {
+  margin: 15px 0;
+  color: #153e37;
+  font-size: clamp(30px, 4vw, 46px);
+}
+
+.dashboard-welcome p {
+  color: #667c76;
+  line-height: 1.8;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.dashboard-card {
+  padding: 28px;
+  background: white;
+  border: 1px solid #e7eee8;
+  border-radius: 18px;
+  box-shadow: 0 12px 35px rgba(29,85,64,.05);
+}
+
+.dashboard-card h2 {
+  color: #147d69;
+  font-size: 20px;
+  margin: 0 0 20px;
+}
+
+.dashboard-card p {
+  color: #667c76;
+  font-size: 14px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-loading {
+  min-height: 50vh;
+  display: grid;
+  place-items: center;
+  color: #147d69;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+@media (max-width: 800px) {
+  .dashboard {
+    padding: 45px 5%;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
